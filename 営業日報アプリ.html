@@ -206,9 +206,10 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
         <button class="btn primary" onclick="openModal(null)">＋ 追加</button>
       </div>
       <div class="legend">
-        <span><span class="ldot" style="background:var(--s2-bg)"></span>対応完了(成約)</span>
-        <span><span class="ldot" style="background:var(--s4-bg)"></span>対応完了(お断り)</span>
-        <span><span class="ldot" style="background:var(--s3-bg)"></span>再訪問予定</span>
+        <span><span class="ldot" style="background:var(--s2-bg)"></span>成約【対応完了】</span>
+        <span><span class="ldot" style="background:var(--s1-bg)"></span>一部成約【再訪予定】</span>
+        <span><span class="ldot" style="background:var(--s3-bg)"></span>今回成約なし【再訪予定】</span>
+        <span><span class="ldot" style="background:var(--s4-bg)"></span>成約なし【お断り】</span>
       </div>
       <div class="tl-card">
         <table class="tl-table">
@@ -274,12 +275,13 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
     <div class="modal-handle"></div>
     <h3 id="modal-ttl">行動を記録</h3>
     <div class="fr">
-      <label>時間帯</label>
-      <select id="f-time"></select>
+      <label>時間帯 <span style="color:var(--text);font-size:11px;">※入力必須</span></label>
+      <select id="f-time"><option value="">選択してください</option></select>
     </div>
     <div class="fr">
-      <label>エリア</label>
+      <label>エリア <span style="color:var(--text);font-size:11px;">※入力必須</span></label>
       <select id="f-area">
+        <option value="">選択してください</option>
         <option>栃木</option>
         <option>壬生・下野・上三川</option>
         <option>館林・板倉・邑楽・明和・千代田</option>
@@ -292,13 +294,15 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
       </select>
     </div>
     <div class="fr">
-      <label>区分</label>
+      <label>区分 <span style="color:var(--text);font-size:11px;">※入力必須</span></label>
       <select id="f-kubun">
+        <option value="">選択してください</option>
         <option>アップセル(アポ有)</option>
         <option>アップセル(アポ無・直訪)</option>
         <option>レスポンス</option>
         <option>工事立会</option>
         <option>解約フォロー</option>
+        <option>架電業務</option>
       </select>
     </div>
     <div class="fr">
@@ -306,12 +310,18 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
       <input type="text" id="f-num" placeholder="例: A-12345" inputmode="text">
     </div>
     <div class="fr">
-      <label>ステータス</label>
-      <select id="f-status">
-        <option value="1">対応完了(成約)</option>
-        <option value="2">対応完了(お断り)</option>
-        <option value="3">再訪問予定</option>
+      <label>ステータス <span style="color:var(--text);font-size:11px;">※入力必須</span></label>
+      <select id="f-status" onchange="onStatusChange()">
+        <option value="">選択してください</option>
+        <option value="1">成約【対応完了】</option>
+        <option value="2">一部成約【再訪予定】</option>
+        <option value="3">今回成約なし【再訪予定】</option>
+        <option value="4">成約なし【お断り】</option>
       </select>
+    </div>
+    <div class="fr" id="fr-revisit" style="display:none;">
+      <label>再訪予定日</label>
+      <input type="date" id="f-revisit">
     </div>
     <div class="fr">
       <label>結果（複数選択可）</label>
@@ -369,10 +379,6 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
       </div>
     </div>
     <div class="fr">
-      <label>再訪予定日</label>
-      <input type="date" id="f-revisit">
-    </div>
-    <div class="fr">
       <label>備考（会話内容等）</label>
       <textarea id="f-memo" placeholder="訪問内容、会話した内容など"></textarea>
     </div>
@@ -397,8 +403,8 @@ const HOURS = [8,9,10,11,12,13,14,15,16,17,18,19];
 const STAFF = [
   '大塚','落合','阿久津','黒子','松本','野口','中新井','金井','テスト'
 ];
-const STATUS_LABEL = {0:'未入力',1:'対応完了(成約)',2:'対応完了(お断り)',3:'再訪問予定'};
-const STATUS_COLOR = {1:'#639922',2:'#E24B4A',3:'#EF9F27'};
+const STATUS_LABEL = {0:'未入力',1:'成約【対応完了】',2:'一部成約【再訪予定】',3:'今回成約なし【再訪予定】',4:'成約なし【お断り】'};
+const STATUS_COLOR = {1:'#639922',2:'#378ADD',3:'#EF9F27',4:'#E24B4A'};
 const RESULTS = ['TV','NET','TEL','でんき','スマホ','カメラ','IPスティック','あんしん','NHK','速度UP'];
 
 // ── 状態 ──
@@ -568,10 +574,11 @@ function openModal(rawKey) {
 
   document.getElementById('modal-ttl').textContent = key && e.status ? '記録を編集' : '行動を記録';
   if (parts[2]) document.getElementById('f-time').value = parts[2];
-  document.getElementById('f-area').value = e.area || STAFF[0];
-  document.getElementById('f-kubun').value = e.kubun || 'アップセル(アポ有)';
+  document.getElementById('f-area').value = e.area || '';
+  document.getElementById('f-kubun').value = e.kubun || '';
   document.getElementById('f-num').value = e.num || '';
-  document.getElementById('f-status').value = e.status || 1;
+  document.getElementById('f-status').value = e.status || '';
+  onStatusChange();
   setChecked(e.results || []);
   document.getElementById('f-denki-co').value = e.denkiCo || '';
   document.getElementById('f-denki-co-other').value = e.denkiCoOther || '';
@@ -591,6 +598,14 @@ function saveEntry() {
   const date = document.getElementById('sel-date').value;
   const hour = parseInt(document.getElementById('f-time').value);
   if (!staff || !date) { toast('スタッフと日付を選択してください'); return; }
+  const fTime = document.getElementById('f-time').value;
+  const fArea = document.getElementById('f-area').value;
+  const fKubun = document.getElementById('f-kubun').value;
+  const fStatus = document.getElementById('f-status').value;
+  if (!fTime) { toast('時間帯を選択してください'); return; }
+  if (!fArea) { toast('エリアを選択してください'); return; }
+  if (!fKubun) { toast('区分を選択してください'); return; }
+  if (!fStatus) { toast('ステータスを選択してください'); return; }
 
   const rawKey = gk(staff, date, hour);
   const eKey = encodeKey(rawKey);
@@ -687,7 +702,7 @@ function getEntriesInRange(s, e) {
 }
 
 function calcStats(list) {
-  const c = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+  const c = { 1:0, 2:0, 3:0, 4:0 };
   let total = 0;
   const rc = {};
   list.forEach(e => {
@@ -724,7 +739,7 @@ function renderAggr(type) {
 function renderStatCards(c, total) {
   let h = '<div class="stat-grid">';
   h += `<div class="scard"><div class="lbl">総行動数</div><div class="num">${total}</div></div>`;
-  [[1,'#639922'],[2,'#E24B4A'],[3,'#EF9F27']].forEach(([s, col]) => {
+  [[1,'#639922'],[2,'#378ADD'],[3,'#EF9F27'],[4,'#E24B4A']].forEach(([s, col]) => {
     h += `<div class="scard"><div class="lbl">${STATUS_LABEL[s]}</div><div class="num" style="color:${col}">${c[s]||0}</div></div>`;
   });
   h += '</div>'; return h;
@@ -733,7 +748,7 @@ function renderStatCards(c, total) {
 function renderStatusTable(c, total) {
   if (!total) return '<p class="empty-msg">この期間のデータがありません</p>';
   let h = '<div class="at-card"><table class="at"><thead><tr><th>ステータス</th><th>件数</th><th>割合</th><th></th></tr></thead><tbody>';
-  [[1,'#639922'],[2,'#E24B4A'],[3,'#EF9F27']].forEach(([s, col]) => {
+  [[1,'#639922'],[2,'#378ADD'],[3,'#EF9F27'],[4,'#E24B4A']].forEach(([s, col]) => {
     const n = c[s]||0, pct = total ? Math.round(n/total*100) : 0;
     h += `<tr><td><span class="badge b${s}">${STATUS_LABEL[s]}</span></td><td>${n}</td><td>${pct}%</td>
       <td><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div></td></tr>`;
@@ -758,12 +773,12 @@ function renderStaffTable(list) {
   STAFF.forEach(s => { byStaff[s] = []; });
   list.forEach(e => { if (e.staff && byStaff[e.staff]) byStaff[e.staff].push(e); });
   let h = '<div class="at-card" style="overflow-x:auto"><table class="at"><thead><tr><th>スタッフ</th><th>総数</th>';
-  [1,2,3].forEach(s => h += `<th><span class="badge b${s}">${STATUS_LABEL[s]}</span></th>`);
+  [1,2,3,4].forEach(s => h += `<th><span class="badge b${s}">${STATUS_LABEL[s]}</span></th>`);
   h += '</tr></thead><tbody>';
   STAFF.forEach(name => {
     const { c, total } = calcStats(byStaff[name]);
     h += `<tr><td style="font-weight:600;white-space:nowrap">${name}</td><td>${total}</td>`;
-    [1,2,3].forEach(s => h += `<td>${c[s]||0}</td>`);
+    [1,2,3,4].forEach(s => h += `<td>${c[s]||0}</td>`);
     h += '</tr>';
   });
   h += '</tbody></table></div>'; return h;
@@ -808,10 +823,10 @@ function downloadExcel(type) {
   const byStaff = {};
   STAFF.forEach(s => { byStaff[s] = []; });
   list.forEach(e => { if (e.staff && byStaff[e.staff]) byStaff[e.staff].push(e); });
-  const summary = [['スタッフ','総行動数','対応完了(成約)','対応完了(お断り)','再訪問予定']];
+  const summary = [['スタッフ','総行動数','成約【対応完了】','一部成約【再訪予定】','今回成約なし【再訪予定】','成約なし【お断り】']];
   STAFF.forEach(name => {
     const { c, total } = calcStats(byStaff[name]);
-    summary.push([name, total, c[1]||0, c[2]||0, c[3]||0]);
+    summary.push([name, total, c[1]||0, c[2]||0, c[3]||0, c[4]||0]);
   });
   const ws2 = XLSX.utils.aoa_to_sheet(summary);
   ws2['!cols'] = [12,10,16,18,12].map(w=>({wch:w}));
@@ -828,6 +843,14 @@ function downloadExcel(type) {
   const filename = `営業日報_${label}.xlsx`;
   XLSX.writeFile(wb, filename);
   toast(`${filename} をダウンロードしました`);
+}
+
+// ── ステータス変更時の再訪予定日表示制御 ──
+function onStatusChange() {
+  const s = document.getElementById('f-status').value;
+  const show = s === '2' || s === '3';
+  document.getElementById('fr-revisit').style.display = show ? 'block' : 'none';
+  if (!show) document.getElementById('f-revisit').value = '';
 }
 
 // ── モーダル外タップで閉じる ──
