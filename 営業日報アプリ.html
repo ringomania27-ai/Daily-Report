@@ -236,9 +236,12 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
           <button class="btn" onclick="changeWeek(1)">›</button>
         </div>
       </div>
-      <div class="seg">
-        <button class="active" onclick="setMode('weekly','all',this)">全体</button>
-        <button onclick="setMode('weekly','staff',this)">スタッフ別</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+        <div class="seg" style="margin-bottom:0">
+          <button class="active" onclick="setMode('weekly','all',this)">全体</button>
+          <button onclick="setMode('weekly','staff',this)">スタッフ別</button>
+        </div>
+        <button class="btn" onclick="downloadExcel('weekly')" style="font-size:12px;padding:6px 12px;background:#1D6F42;color:#fff;border-color:#1D6F42;">&#8681; Excel出力</button>
       </div>
       <div id="wk-content"></div>
     </div>
@@ -252,9 +255,12 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
           <button class="btn" onclick="changeMonth(1)">›</button>
         </div>
       </div>
-      <div class="seg">
-        <button class="active" onclick="setMode('monthly','all',this)">全体</button>
-        <button onclick="setMode('monthly','staff',this)">スタッフ別</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+        <div class="seg" style="margin-bottom:0">
+          <button class="active" onclick="setMode('monthly','all',this)">全体</button>
+          <button onclick="setMode('monthly','staff',this)">スタッフ別</button>
+        </div>
+        <button class="btn" onclick="downloadExcel('monthly')" style="font-size:12px;padding:6px 12px;background:#1D6F42;color:#fff;border-color:#1D6F42;">&#8681; Excel出力</button>
       </div>
       <div id="mo-content"></div>
     </div>
@@ -381,6 +387,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
 <div id="toast"></div>
 
 <!-- Firebase SDK -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
@@ -388,7 +395,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
 // ── 定数 ──
 const HOURS = [8,9,10,11,12,13,14,15,16,17,18,19];
 const STAFF = [
-  '大塚','落合','阿久津','黒子','松本','野口','中新井','金井'
+  '大塚','落合','阿久津','黒子','松本','野口','中新井','金井','テスト'
 ];
 const STATUS_LABEL = {0:'未入力',1:'対応完了(成約)',2:'対応完了(お断り)',3:'再訪問予定'};
 const STATUS_COLOR = {1:'#639922',2:'#E24B4A',3:'#EF9F27'};
@@ -760,6 +767,67 @@ function renderStaffTable(list) {
     h += '</tr>';
   });
   h += '</tbody></table></div>'; return h;
+}
+
+
+// ── Excel出力 ──
+function downloadExcel(type) {
+  const isW = type === 'weekly';
+  let start, end, label;
+  if (isW) {
+    const { mon, sun } = getWeekRange(wkOff);
+    start = fmtD(mon); end = fmtD(sun);
+    label = `${mon.getMonth()+1}月${mon.getDate()}日〜${sun.getMonth()+1}月${sun.getDate()}日`;
+  } else {
+    const { first, last } = getMonthRange(moOff);
+    start = fmtD(first); end = fmtD(last);
+    label = `${first.getFullYear()}年${first.getMonth()+1}月`;
+  }
+  const list = getEntriesInRange(start, end);
+  if (!list.length) { toast('この期間のデータがありません'); return; }
+
+  const wb = XLSX.utils.book_new();
+
+  // ── シート1: 明細データ ──
+  const detail = [['日付','スタッフ','時間','エリア','区分','番号','ステータス','結果','電力会社','NG理由','再訪予定日','備考']];
+  list.sort((a,b) => (a.date+a.staff) < (b.date+b.staff) ? -1 : 1).forEach(e => {
+    detail.push([
+      e.date, e.staff, e.hour ? `${e.hour}:00` : '',
+      e.area||'', e.kubun||'', e.num||'',
+      STATUS_LABEL[e.status]||'',
+      (e.results||[]).join('・'),
+      e.denkiCo||'', e.denkiNG||'',
+      e.revisit||'', e.memo||''
+    ]);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(detail);
+  ws1['!cols'] = [8,10,6,12,16,12,14,20,14,14,10,20].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws1, '明細');
+
+  // ── シート2: スタッフ別集計 ──
+  const byStaff = {};
+  STAFF.forEach(s => { byStaff[s] = []; });
+  list.forEach(e => { if (e.staff && byStaff[e.staff]) byStaff[e.staff].push(e); });
+  const summary = [['スタッフ','総行動数','対応完了(成約)','対応完了(お断り)','再訪問予定']];
+  STAFF.forEach(name => {
+    const { c, total } = calcStats(byStaff[name]);
+    summary.push([name, total, c[1]||0, c[2]||0, c[3]||0]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(summary);
+  ws2['!cols'] = [12,10,16,18,12].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws2, 'スタッフ別集計');
+
+  // ── シート3: 結果集計 ──
+  const { rc } = calcStats(list);
+  const resultRows = [['結果項目','件数']];
+  Object.entries(rc).sort((a,b)=>b[1]-a[1]).forEach(([k,v]) => resultRows.push([k,v]));
+  const ws3 = XLSX.utils.aoa_to_sheet(resultRows);
+  ws3['!cols'] = [14,8].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws3, '結果集計');
+
+  const filename = `営業日報_${label}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  toast(`${filename} をダウンロードしました`);
 }
 
 // ── モーダル外タップで閉じる ──
