@@ -565,24 +565,61 @@ function renderTimeline() {
   const date = document.getElementById('sel-date').value;
   if (!staff || !date) return;
 
+  // この日のスタッフの全エントリを収集
+  const dayEntries = [];
+  Object.keys(entries).forEach(k => {
+    const e = entries[k];
+    if (e && e.staff === staff && e.date === date && e.timeStart) {
+      dayEntries.push({ key: k, e });
+    }
+  });
+
+  // 30分スロットを生成（8:00〜19:30）
+  const slots = [];
+  HOURS.forEach(h => { slots.push(h*60); slots.push(h*60+30); });
+
+  function fmt(m){ return `${Math.floor(m/60)}:${String(m%60).padStart(2,'0')}`; }
+
   let html = '';
-  HOURS.forEach(h => {
-    const key = gk(staff, date, h*60);
-    const e = entries[encodeKey(key)] || entries[key] || {};
-    const s = e.status || 0;
-    const rs = e.results && e.results.length ? e.results.join('・') : '';
-    const kubunShort = (e.kubun || '').replace('アップセル', 'UP').replace('(アポ有)', '有').replace('(アポ無・直訪)', '無');
-    const timeDisp = e.timeLabel || `${h}:00`;
-    html += `<tr>
-      <td class="td-time" style="font-size:10px;">${timeDisp}</td>
-      <td class="td-cell" onclick="openModal('${key}')"><div class="cell-in s${s}">${e.area || ''}</div></td>
-      <td class="td-cell" onclick="openModal('${key}')"><div class="cell-in s${s}" style="font-size:10px">${kubunShort}</div></td>
-      <td class="td-cell" onclick="openModal('${key}')"><div class="cell-in s${s}">${e.num || ''}</div></td>
-      <td class="td-cell" onclick="openModal('${key}')"><div class="cell-in s${s}">${s > 0 ? STATUS_LABEL[s] : ''}</div></td>
-      <td class="td-cell" onclick="openModal('${key}')"><div class="cell-in s${s}" style="font-size:10px">${rs}</div></td>
-    </tr>`;
+  slots.forEach(slotMin => {
+    // このスロットを開始時間とする記録を探す
+    const found = dayEntries.find(({ e }) => parseInt(e.timeStart) === slotMin);
+    if (found) {
+      const { key, e } = found;
+      const s = e.status || 0;
+      const rs = e.results && e.results.length ? e.results.join('・') : '';
+      const kubunShort = (e.kubun || '').replace('アップセル', 'UP').replace('(アポ有)', '有').replace('(アポ無・直訪)', '無');
+      const timeDisp = e.timeLabel || fmt(slotMin);
+      html += `<tr>
+        <td class="td-time" style="font-size:10px;">${timeDisp}</td>
+        <td class="td-cell" onclick="openModal('${key}')"><div class="cell-in s${s}">${e.area || ''}</div></td>
+        <td class="td-cell" onclick="openModal('${key}')"><div class="cell-in s${s}" style="font-size:10px">${kubunShort}</div></td>
+        <td class="td-cell" onclick="openModal('${key}')"><div class="cell-in s${s}">${e.num || ''}</div></td>
+        <td class="td-cell" onclick="openModal('${key}')"><div class="cell-in s${s}">${s > 0 ? STATUS_LABEL[s] : ''}</div></td>
+        <td class="td-cell" onclick="openModal('${key}')"><div class="cell-in s${s}" style="font-size:10px">${rs}</div></td>
+      </tr>`;
+    } else {
+      // 空スロット（クリックで新規入力、開始時間をセット）
+      const emptyKey = gk(staff, date, slotMin);
+      html += `<tr>
+        <td class="td-time" style="font-size:10px;">${fmt(slotMin)}</td>
+        <td class="td-cell" onclick="openModalAt('${staff}','${date}',${slotMin})"><div class="cell-in s0"></div></td>
+        <td class="td-cell" onclick="openModalAt('${staff}','${date}',${slotMin})"><div class="cell-in s0"></div></td>
+        <td class="td-cell" onclick="openModalAt('${staff}','${date}',${slotMin})"><div class="cell-in s0"></div></td>
+        <td class="td-cell" onclick="openModalAt('${staff}','${date}',${slotMin})"><div class="cell-in s0"></div></td>
+        <td class="td-cell" onclick="openModalAt('${staff}','${date}',${slotMin})"><div class="cell-in s0"></div></td>
+      </tr>`;
+    }
   });
   document.getElementById('tl-body').innerHTML = html;
+}
+
+// 空セルクリック時：開始時間をプリセットしてモーダル表示
+function openModalAt(staff, date, startMin) {
+  openModal(null);
+  document.getElementById('f-time-start').value = startMin;
+  // 終了時間は1時間後をデフォルト
+  document.getElementById('f-time-end').value = startMin + 60;
 }
 
 // ── モーダル ──
