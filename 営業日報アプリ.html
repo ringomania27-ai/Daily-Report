@@ -154,15 +154,17 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
 .seg { display: flex; gap: 0; margin-bottom: 10px; border: 0.5px solid var(--border-md); border-radius: var(--radius-sm); overflow: hidden; width: fit-content; }
 .seg button { padding: 7px 16px; font-size: 13px; border: none; background: var(--surface); color: var(--muted); cursor: pointer; font-family: inherit; }
 .seg button.active { background: var(--accent); color: #fff; font-weight: 500; }
-.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
-.scard { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px; text-align: center; }
-.scard .num { font-size: 22px; font-weight: 600; margin-top: 2px; }
-.scard .lbl { font-size: 11px; color: var(--muted); }
+.stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 10px; }
+.scard { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 8px 4px; text-align: center; }
+.scard .num { font-size: 18px; font-weight: 600; margin-top: 2px; }
+.scard .lbl { font-size: 10px; color: var(--muted); line-height: 1.3; }
 .at-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 10px; }
 .at-card-title { font-size: 13px; font-weight: 600; padding: 10px 12px 0; }
 .at { width: 100%; border-collapse: collapse; font-size: 12px; }
-.at th { padding: 7px 10px; text-align: left; border-bottom: 0.5px solid var(--border); color: var(--muted); font-weight: 600; white-space: nowrap; background: #F9F8F6; }
-.at td { padding: 7px 10px; border-bottom: 0.5px solid var(--border); }
+.at th { padding: 5px 6px; text-align: center; border-bottom: 0.5px solid var(--border); color: var(--muted); font-weight: 600; white-space: normal; background: #F9F8F6; font-size:11px; line-height:1.3; }
+.at th.th-left { text-align: left; }
+.at td { padding: 6px 6px; border-bottom: 0.5px solid var(--border); text-align:center; font-size:13px; }
+.at td.td-left { text-align: left; font-weight:600; }
 .at tr:last-child td { border-bottom: none; }
 .bar-bg { height: 5px; background: #EEECEA; border-radius: 3px; overflow: hidden; min-width: 50px; }
 .bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
@@ -175,20 +177,51 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
 /* ── Toast ── */
 #toast { position: fixed; bottom: calc(20px + var(--safe-b)); left: 50%; transform: translateX(-50%) translateY(20px); background: #1A1A1A; color: #fff; font-size: 13px; padding: 9px 18px; border-radius: 20px; opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 400; white-space: nowrap; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── ログイン画面 ── */
+#login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+#login-screen h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+#login-screen p { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+.staff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 360px; margin-bottom: 24px; }
+.staff-btn { padding: 14px; font-size: 15px; font-weight: 500; background: var(--surface); border: 0.5px solid var(--border-md); border-radius: var(--radius); cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.staff-btn:active { background: var(--accent-lt); border-color: var(--accent); }
+.staff-btn.selected { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }
+.pin-area { width: 100%; max-width: 360px; }
+.pin-area label { font-size: 13px; color: var(--muted); margin-bottom: 6px; display: block; }
+.pin-input { display: flex; gap: 10px; align-items: center; }
+.pin-input input { flex: 1; padding: 12px; font-size: 20px; letter-spacing: 8px; text-align: center; border: 0.5px solid var(--border-md); border-radius: var(--radius); background: var(--surface); font-family: inherit; }
+.pin-err { font-size: 12px; color: #E24B4A; margin-top: 6px; min-height: 18px; }
 </style>
 </head>
 <body>
+
+<!-- ── ログイン画面 ── -->
+<div id="login-screen">
+  <h2>📋 営業日報</h2>
+  <p>担当者を選択してPINを入力してください</p>
+  <div class="staff-grid" id="login-staff-grid"></div>
+  <div class="pin-area" id="pin-area" style="display:none">
+    <label id="pin-label">PINコードを入力</label>
+    <div class="pin-input">
+      <input type="password" id="pin-input" maxlength="4" inputmode="numeric" placeholder="----" oninput="onPinInput()">
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+  </div>
+</div>
 
 <div id="app">
   <div id="header">
     <div id="header-top">
       <h1>📋 営業日報</h1>
-      <span class="sync-pill sync-off" id="sync-pill">●  起動中</span>
+      <span id="login-user" style="font-size:13px;font-weight:500;color:var(--accent)"></span>
+      <span class="sync-pill sync-off" id="sync-pill" style="margin-left:auto">●  起動中</span>
+      <button class="btn" onclick="logout()" style="padding:4px 10px;font-size:11px;margin-left:6px">退出</button>
     </div>
     <div id="tabs">
       <button class="tab active" onclick="showPage('daily',this)">日報入力</button>
-      <button class="tab" onclick="showPage('weekly',this)">週次集計</button>
-      <button class="tab" onclick="showPage('monthly',this)">月次集計</button>
+      <button class="tab" onclick="showPage('prevday',this)">日次</button>
+      <button class="tab" onclick="showPage('weekly',this)">週次</button>
+      <button class="tab" onclick="showPage('monthly',this)">月次</button>
     </div>
   </div>
 
@@ -209,7 +242,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
         <span><span class="ldot" style="background:var(--s2-bg)"></span>成約【対応完了】</span>
         <span><span class="ldot" style="background:var(--s1-bg)"></span>一部成約【再訪予定】</span>
         <span><span class="ldot" style="background:var(--s3-bg)"></span>今回成約なし【再訪予定】</span>
-        <span><span class="ldot" style="background:var(--s4-bg)"></span>成約なし【お断り】</span>
+        <span><span class="ldot" style="background:var(--s4-bg)"></span>成約なし【NG】</span>
       </div>
       <div class="tl-card">
         <table class="tl-table">
@@ -226,6 +259,25 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
           <tbody id="tl-body"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- ── 前日集計 ── -->
+    <div class="page" id="page-prevday">
+      <div class="toolbar">
+        <div class="wnav">
+          <button class="btn" onclick="changePrevDay(-1)">‹</button>
+          <span class="wnav-lbl" id="pd-lbl"></span>
+          <button class="btn" onclick="changePrevDay(1)">›</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+        <div class="seg" style="margin-bottom:0">
+          <button class="active" onclick="setMode('prevday','all',this)">全体</button>
+          <button onclick="setMode('prevday','staff',this)">スタッフ別</button>
+        </div>
+        <button class="btn" onclick="downloadExcel('prevday')" style="font-size:12px;padding:6px 12px;background:#1D6F42;color:#fff;border-color:#1D6F42;">&#8681; Excel出力</button>
+      </div>
+      <div id="pd-content"></div>
     </div>
 
     <!-- ── 週次集計 ── -->
@@ -321,7 +373,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
         <option value="1">成約【対応完了】</option>
         <option value="2">一部成約【再訪予定】</option>
         <option value="3">今回成約なし【再訪予定】</option>
-        <option value="4">成約なし【お断り】</option>
+        <option value="4">成約なし【NG】</option>
       </select>
     </div>
     <div class="fr" id="fr-revisit" style="display:none;">
@@ -405,19 +457,36 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
 <script>
 // ── 定数 ──
 const HOURS = [8,9,10,11,12,13,14,15,16,17,18,19];
+
+// ── PINコード設定（スタッフ名: PIN） ──
+const STAFF_PINS = {
+  '阿久津': '5102',
+  '大塚':   '1127',
+  '落合':   '0436',
+  '金井':   '0350',
+  '黒子':   '5151',
+  '中新井': '1099',
+  '野口':   '0010',
+  '松本':   '0426',
+  'テスト': '0000',
+};
 const STAFF = [
-  '大塚','落合','阿久津','黒子','松本','野口','中新井','金井','テスト'
+  '阿久津','大塚','落合','金井','黒子','中新井','野口','テスト'
 ];
-const STATUS_LABEL = {0:'未入力',1:'成約【対応完了】',2:'一部成約【再訪予定】',3:'今回成約なし【再訪予定】',4:'成約なし【お断り】'};
+const STATUS_LABEL = {0:'未入力',1:'成約【対応完了】',2:'一部成約【再訪予定】',3:'今回成約なし【再訪予定】',4:'成約なし【NG】'};
 const STATUS_COLOR = {1:'#639922',2:'#378ADD',3:'#EF9F27',4:'#E24B4A'};
 const RESULTS = ['TV','NET','TEL','でんき','スマホ','カメラ','IPスティック','あんしん','NHK','速度UP'];
+const TEAMS = [
+  { name: '茨城チーム', members: ['大塚','落合','黒子','阿久津'] },
+  { name: '栃木・群馬チーム', members: ['金井','中新井','野口'] },
+];
 
 // ── 状態 ──
 let db = null;
 let entries = {};
 let editKey = null;
-let wkOff = 0, moOff = 0;
-let wkMode = 'all', moMode = 'all';
+let wkOff = 0, moOff = 0, pdOff = -1;
+let wkMode = 'all', moMode = 'all', pdMode = 'all';
 let saveTimer = null;
 
 // ── Firebase 初期化 ──
@@ -726,19 +795,24 @@ function showPage(id, btn) {
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   btn.classList.add('active');
+  if (id === 'prevday') renderAggr('prevday');
   if (id === 'weekly')  renderAggr('weekly');
   if (id === 'monthly') renderAggr('monthly');
 }
 function refreshActiveAggr() {
+  if (document.getElementById('page-prevday').classList.contains('active')) renderAggr('prevday');
   if (document.getElementById('page-weekly').classList.contains('active'))  renderAggr('weekly');
   if (document.getElementById('page-monthly').classList.contains('active')) renderAggr('monthly');
 }
 function setMode(type, mode, btn) {
   btn.closest('.seg').querySelectorAll('button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  if (type === 'weekly') wkMode = mode; else moMode = mode;
+  if (type === 'weekly') wkMode = mode;
+  else if (type === 'monthly') moMode = mode;
+  else pdMode = mode;
   renderAggr(type);
 }
+function changePrevDay(d) { pdOff += d; renderAggr('prevday'); }
 
 // ── 集計 ──
 function getWeekRange(off) {
@@ -778,10 +852,15 @@ function calcStats(list) {
 }
 
 function renderAggr(type) {
+  const isPD = type === 'prevday';
   const isW = type === 'weekly';
-  const mode = isW ? wkMode : moMode;
+  const mode = isPD ? pdMode : (isW ? wkMode : moMode);
   let start, end;
-  if (isW) {
+  if (isPD) {
+    const d = new Date(); d.setDate(d.getDate() + pdOff);
+    start = fmtD(d); end = fmtD(d);
+    document.getElementById('pd-lbl').textContent = `${d.getMonth()+1}/${d.getDate()}（${['日','月','火','水','木','金','土'][d.getDay()]}）`;
+  } else if (isW) {
     const { mon, sun } = getWeekRange(wkOff);
     start = fmtD(mon); end = fmtD(sun);
     document.getElementById('wk-lbl').textContent = `${mon.getMonth()+1}/${mon.getDate()} ～ ${sun.getMonth()+1}/${sun.getDate()}`;
@@ -791,21 +870,30 @@ function renderAggr(type) {
     document.getElementById('mo-lbl').textContent = `${first.getFullYear()}年 ${first.getMonth()+1}月`;
   }
   const list = getEntriesInRange(start, end);
-  const target = document.getElementById(isW ? 'wk-content' : 'mo-content');
+  const target = document.getElementById(isPD ? 'pd-content' : (isW ? 'wk-content' : 'mo-content'));
 
   if (mode === 'all') {
     const { c, total, rc } = calcStats(list);
-    target.innerHTML = renderStatCards(c, total) + renderStatusTable(c, total) + renderResultTable(rc);
+    // 全体サマリー
+    let allHtml = renderStatCards(c, total) + renderStatusTable(c, total) + renderResultTable(rc);
+    // チーム別サマリー
+    allHtml += '<div style="font-size:13px;font-weight:600;margin:12px 0 6px">チーム別</div>';
+    allHtml += renderStaffTable(list);
+    target.innerHTML = allHtml;
   } else {
     target.innerHTML = renderStaffTable(list);
   }
 }
 
+// ステータス名を2行に分割（【】で改行）
+function splitLabel(label) {
+  return label.replace('【', '<br>【');
+}
 function renderStatCards(c, total) {
   let h = '<div class="stat-grid">';
-  h += `<div class="scard"><div class="lbl">総行動数</div><div class="num">${total}</div></div>`;
+  h += `<div class="scard"><div class="lbl">総行動<br>数</div><div class="num">${total}</div></div>`;
   [[1,'#639922'],[2,'#378ADD'],[3,'#EF9F27'],[4,'#E24B4A']].forEach(([s, col]) => {
-    h += `<div class="scard"><div class="lbl">${STATUS_LABEL[s]}</div><div class="num" style="color:${col}">${c[s]||0}</div></div>`;
+    h += `<div class="scard"><div class="lbl">${splitLabel(STATUS_LABEL[s])}</div><div class="num" style="color:${col}">${c[s]||0}</div></div>`;
   });
   h += '</div>'; return h;
 }
@@ -837,24 +925,63 @@ function renderStaffTable(list) {
   const byStaff = {};
   STAFF.forEach(s => { byStaff[s] = []; });
   list.forEach(e => { if (e.staff && byStaff[e.staff]) byStaff[e.staff].push(e); });
-  let h = '<div class="at-card" style="overflow-x:auto"><table class="at"><thead><tr><th>スタッフ</th><th>総数</th>';
-  [1,2,3,4].forEach(s => h += `<th><span class="badge b${s}">${STATUS_LABEL[s]}</span></th>`);
-  h += '</tr></thead><tbody>';
-  STAFF.forEach(name => {
-    const { c, total } = calcStats(byStaff[name]);
-    h += `<tr><td style="font-weight:600;white-space:nowrap">${name}</td><td>${total}</td>`;
-    [1,2,3,4].forEach(s => h += `<td>${c[s]||0}</td>`);
-    h += '</tr>';
+
+  const SHORT_LABEL = {1:'成約<br>【完了】', 2:'一部成約<br>【再訪】', 3:'今回成約なし<br>【再訪】', 4:'成約なし<br>【NG】'};
+  const STATUS_COLORS_MAP = {1:'#639922',2:'#378ADD',3:'#EF9F27',4:'#E24B4A'};
+
+  let html = '';
+  TEAMS.forEach(team => {
+    const memberData = team.members.map(name => {
+      const ml = byStaff[name] || [];
+      const { c, total } = calcStats(ml);
+      const svc = RESULTS.map(r => ml.filter(e => e.results && e.results.includes(r)).length);
+      return { name, c, total, svc };
+    });
+    const teamAll = team.members.flatMap(n => byStaff[n] || []);
+    const { c: tc, total: tt } = calcStats(teamAll);
+    const tSvc = RESULTS.map(r => teamAll.filter(e => e.results && e.results.includes(r)).length);
+
+    // 全データを1つのテーブルで構成（左固定列＋右スクロール列）
+    const rows = [...memberData, { name:'合計', c:tc, total:tt, svc:tSvc, isTotal:true }];
+
+    let h = `<div class="at-card" style="margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600;padding:10px 12px 4px;color:var(--accent)">${team.name}</div>
+      <div style="overflow-x:auto">
+        <table class="at" style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th class="th-left" style="white-space:nowrap;min-width:52px">スタッフ</th>
+            <th style="min-width:36px">総数</th>`;
+    [1,2,3,4].forEach(s => {
+      h += `<th style="min-width:52px;color:${STATUS_COLORS_MAP[s]};white-space:nowrap">${SHORT_LABEL[s]}</th>`;
+    });
+    RESULTS.forEach(r => h += `<th style="min-width:46px;font-size:10px;white-space:nowrap">${r}</th>`);
+    h += '</tr></thead><tbody>';
+
+    rows.forEach(({ name, c, total, svc, isTotal }) => {
+      const bg = isTotal ? 'background:var(--bg);font-weight:600' : '';
+      h += `<tr style="${bg}"><td class="td-left" style="white-space:nowrap">${name}</td><td>${total}</td>`;
+      [1,2,3,4].forEach(s => h += `<td>${c[s]||0}</td>`);
+      svc.forEach(v => h += `<td>${v}</td>`);
+      h += '</tr>';
+    });
+
+    h += '</tbody></table></div></div>';
+    html += h;
   });
-  h += '</tbody></table></div>'; return h;
+  return html;
 }
 
 
 // ── Excel出力 ──
 function downloadExcel(type) {
+  const isPD = type === 'prevday';
   const isW = type === 'weekly';
   let start, end, label;
-  if (isW) {
+  if (isPD) {
+    const d = new Date(); d.setDate(d.getDate() + pdOff);
+    start = fmtD(d); end = fmtD(d);
+    label = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+  } else if (isW) {
     const { mon, sun } = getWeekRange(wkOff);
     start = fmtD(mon); end = fmtD(sun);
     label = `${mon.getMonth()+1}月${mon.getDate()}日〜${sun.getMonth()+1}月${sun.getDate()}日`;
@@ -884,23 +1011,28 @@ function downloadExcel(type) {
   ws1['!cols'] = [8,10,6,12,16,12,14,20,14,14,10,20].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, ws1, '明細');
 
-  // ── シート2: スタッフ別集計 ──
-  const byStaff = {};
-  STAFF.forEach(s => { byStaff[s] = []; });
-  list.forEach(e => { if (e.staff && byStaff[e.staff]) byStaff[e.staff].push(e); });
-  // ヘッダー：基本列 + サービス列
-  const summaryHeader = ['スタッフ','総行動数','成約【対応完了】','一部成約【再訪予定】','今回成約なし【再訪予定】','成約なし【お断り】', ...RESULTS];
+  // ── シート2: スタッフ別集計（チーム別） ──
+  const byStaff2 = {};
+  STAFF.forEach(s => { byStaff2[s] = []; });
+  list.forEach(e => { if (e.staff && byStaff2[e.staff]) byStaff2[e.staff].push(e); });
+  const summaryHeader = ['チーム','スタッフ','総行動数','成約【対応完了】','一部成約【再訪予定】','今回成約なし【再訪予定】','成約なし【NG】', ...RESULTS];
   const summary = [summaryHeader];
-  STAFF.forEach(name => {
-    const { c, total } = calcStats(byStaff[name]);
-    // サービス別獲得数（resultsに含まれる件数）
-    const svcCounts = RESULTS.map(r =>
-      byStaff[name].filter(e => e.results && e.results.includes(r)).length
-    );
-    summary.push([name, total, c[1]||0, c[2]||0, c[3]||0, c[4]||0, ...svcCounts]);
+  TEAMS.forEach(team => {
+    team.members.forEach(name => {
+      const { c, total } = calcStats(byStaff2[name] || []);
+      const svcCounts = RESULTS.map(r =>
+        (byStaff2[name] || []).filter(e => e.results && e.results.includes(r)).length
+      );
+      summary.push([team.name, name, total, c[1]||0, c[2]||0, c[3]||0, c[4]||0, ...svcCounts]);
+    });
+    // チーム合計
+    const teamAll = team.members.flatMap(n => byStaff2[n] || []);
+    const { c: tc, total: tt } = calcStats(teamAll);
+    const tSvc = RESULTS.map(r => teamAll.filter(e => e.results && e.results.includes(r)).length);
+    summary.push([team.name+'合計', '', tt, tc[1]||0, tc[2]||0, tc[3]||0, tc[4]||0, ...tSvc]);
   });
   const ws2 = XLSX.utils.aoa_to_sheet(summary);
-  const ws2Cols = [12,10,16,18,20,16, ...RESULTS.map(()=>10)].map(w=>({wch:w}));
+  const ws2Cols = [12,12,10,16,18,20,16, ...RESULTS.map(()=>10)].map(w=>({wch:w}));
   ws2['!cols'] = ws2Cols;
   XLSX.utils.book_append_sheet(wb, ws2, 'スタッフ別集計');
 
@@ -931,11 +1063,74 @@ document.getElementById('modal').addEventListener('click', function(e) {
 });
 
 // ── 起動 ──
+// ── ログイン処理 ──
+let loginStaff = null;
+
+function initLoginScreen() {
+  const grid = document.getElementById('login-staff-grid');
+  STAFF.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'staff-btn';
+    btn.textContent = name;
+    btn.onclick = () => selectLoginStaff(name);
+    grid.appendChild(btn);
+  });
+  // セッション中にログイン済みならスキップ
+  const saved = sessionStorage.getItem('nippo_user');
+  if (saved && STAFF.includes(saved)) {
+    doLogin(saved);
+  }
+}
+
+function selectLoginStaff(name) {
+  loginStaff = name;
+  document.querySelectorAll('.staff-btn').forEach(b => {
+    b.classList.toggle('selected', b.textContent === name);
+  });
+  document.getElementById('pin-area').style.display = 'block';
+  document.getElementById('pin-label').textContent = `${name} のPINコードを入力`;
+  document.getElementById('pin-input').value = '';
+  document.getElementById('pin-err').textContent = '';
+  document.getElementById('pin-input').focus();
+}
+
+function onPinInput() {
+  const val = document.getElementById('pin-input').value;
+  if (val.length === 4) {
+    if (STAFF_PINS[loginStaff] === val) {
+      doLogin(loginStaff);
+    } else {
+      document.getElementById('pin-err').textContent = 'PINコードが違います';
+      document.getElementById('pin-input').value = '';
+    }
+  } else {
+    document.getElementById('pin-err').textContent = '';
+  }
+}
+
+function doLogin(name) {
+  sessionStorage.setItem('nippo_user', name);
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('login-user').textContent = name;
+  document.getElementById('sel-staff').value = name;
+  renderTimeline();
+}
+
+function logout() {
+  sessionStorage.removeItem('nippo_user');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('pin-area').style.display = 'none';
+  document.getElementById('pin-input').value = '';
+  loginStaff = null;
+  document.querySelectorAll('.staff-btn').forEach(b => b.classList.remove('selected'));
+}
+
 initStaff();
 initTimeSelect();
 initResultGrid();
 document.getElementById('sel-date').value = todayStr();
 initFirebase();
+initLoginScreen();
 </script>
 </body>
 </html>
