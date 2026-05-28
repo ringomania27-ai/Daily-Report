@@ -345,6 +345,8 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
         <option>結城・筑西</option>
         <option>久喜</option>
         <option>古河</option>
+        <option>古河(総和)</option>
+        <option>古河(三和)</option>
         <option>八千代</option>
         <option>茂木</option>
         <option>益子</option>
@@ -364,7 +366,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
     </div>
     <div class="fr">
       <label>案件番号 / 顧客番号 <span style="color:var(--muted);font-size:11px;">※アルファベット(I-)は入力無しでOK</span></label>
-      <input type="text" id="f-num" placeholder="例:123456" inputmode="text">
+      <input type="number" id="f-num" placeholder="例:123456" inputmode="numeric" pattern="[0-9]*" min="0" step="1" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
     </div>
     <div class="fr">
       <label>ステータス <span style="color:var(--text);font-size:11px;">※入力必須</span></label>
