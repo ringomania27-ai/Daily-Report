@@ -819,12 +819,19 @@ function deleteEntry() {
   if (!editKey) return;
   if (!confirm('この記録を削除しますか？')) return;
   const eKey = encodeKey(editKey);
+  // 削除前にarea・numを保持
+  const existing = entries[eKey] || {};
   // タイムラインからは消す
   delete entries[eKey];
   closeModal();
   renderTimeline();
-  // Firebaseには削除フラグを立てて残す（GASがスプシをクリアできるよう）
-  const deletedData = { deleted: true, ts: new Date().toISOString() };
+  // Firebaseには削除フラグ＋area・numを残す（GASがスプシをクリアできるよう）
+  const deletedData = {
+    deleted: true,
+    area: existing.area || '',
+    num:  existing.num  || '',
+    ts:   new Date().toISOString()
+  };
   saveToFirebase(editKey, deletedData);
   if (USE_LOCAL) saveLocal();
   toast('削除しました');
