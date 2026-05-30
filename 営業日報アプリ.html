@@ -230,6 +230,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
     </div>
     <div id="tabs">
       <button class="tab active" onclick="showPage('daily',this)">日報入力</button>
+      <button class="tab" onclick="showPage('revisit',this)">再訪</button>
       <button class="tab" onclick="showPage('prevday',this)">日次</button>
       <button class="tab" onclick="showPage('weekly',this)">週次</button>
       <button class="tab" onclick="showPage('monthly',this)">月次</button>
@@ -270,6 +271,22 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
           <tbody id="tl-body"></tbody>
         </table>
       </div>
+    </div>
+
+    <!-- ── 再訪リスト ── -->
+    <div class="page" id="page-revisit">
+      <div class="toolbar" style="flex-wrap:wrap;gap:6px">
+        <div class="seg" id="revisit-filter-seg">
+          <button class="active" onclick="setRevisitFilter('all',this)">全て</button>
+          <button onclick="setRevisitFilter('today',this)">本日</button>
+          <button onclick="setRevisitFilter('week',this)">今週</button>
+          <button onclick="setRevisitFilter('overdue',this)">期限超過</button>
+        </div>
+        <select id="revisit-staff-filter" onchange="renderRevisitList()" style="font-size:13px;padding:7px 9px;border:0.5px solid var(--border-md);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);">
+          <option value="">全スタッフ</option>
+        </select>
+      </div>
+      <div id="revisit-content"></div>
     </div>
 
     <!-- ── 前日集計 ── -->
@@ -869,6 +886,7 @@ function showPage(id, btn) {
   document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   btn.classList.add('active');
+  if (id === 'revisit') renderRevisitList();
   if (id === 'prevday') renderAggr('prevday');
   if (id === 'weekly')  renderAggr('weekly');
   if (id === 'monthly') renderAggr('monthly');
