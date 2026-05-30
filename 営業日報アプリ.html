@@ -874,6 +874,7 @@ function showPage(id, btn) {
   if (id === 'monthly') renderAggr('monthly');
 }
 function refreshActiveAggr() {
+  if (document.getElementById('page-revisit').classList.contains('active')) renderRevisitList();
   if (document.getElementById('page-prevday').classList.contains('active')) renderAggr('prevday');
   if (document.getElementById('page-weekly').classList.contains('active'))  renderAggr('weekly');
   if (document.getElementById('page-monthly').classList.contains('active')) renderAggr('monthly');
@@ -1040,7 +1041,12 @@ function renderStaffTable(list) {
 
     rows.forEach(({ name, c, total, svc, isTotal }) => {
       const bg = isTotal ? 'background:var(--bg);font-weight:600' : '';
-      h += `<tr style="${bg}"><td class="td-left" style="white-space:nowrap">${name}</td><td>${total}</td>`;
+      const memberList = isTotal ? teamAll : (byStaff[name] || []);
+      const memberListJson = JSON.stringify(memberList).replace(/"/g,'&quot;');
+      const nameCell = isTotal
+        ? `<td class="td-left" style="white-space:nowrap;font-weight:600">${name}</td>`
+        : `<td class="td-left" style="white-space:nowrap;color:var(--accent);cursor:pointer;text-decoration:underline" onclick="showStaffDetail('${name}',${memberListJson})">${name}</td>`;
+      h += `<tr style="${bg}">${nameCell}<td>${total}</td>`;
       [1,2,3,4].forEach(s => h += `<td>${c[s]||0}</td>`);
       svc.forEach(v => h += `<td>${v}</td>`);
       h += '</tr>';
@@ -1130,6 +1136,55 @@ function downloadExcel(type) {
   toast(`${filename} をダウンロードしました`);
 }
 
+// ── スタッフ詳細モーダル ──
+function showStaffDetail(name, list) {
+  const { c, total, rc } = calcStats(list);
+  const colors = {1:'#639922',2:'#378ADD',3:'#EF9F27',4:'#E24B4A'};
+
+  // サマリーカード
+  let h = '<div class="stat-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:10px">';
+  h += `<div class="scard"><div class="lbl">訪問<br>数</div><div class="num">${total}</div></div>`;
+  [[1,'#639922'],[2,'#378ADD'],[3,'#EF9F27'],[4,'#E24B4A']].forEach(([s,col]) => {
+    const filtered = list.filter(e => e.status === s);
+    const fJson = JSON.stringify(filtered).replace(/"/g,'&quot;');
+    h += `<div class="scard" onclick="showDetailModal(${s},${fJson})" style="cursor:pointer"><div class="lbl">${splitLabel(STATUS_LABEL[s])}</div><div class="num" style="color:${col}">${c[s]||0}</div></div>`;
+  });
+  h += '</div>';
+
+  // ステータステーブル
+  if (total > 0) {
+    h += '<div class="at-card" style="margin-bottom:10px"><table class="at"><thead><tr><th>ステータス</th><th>件数</th><th>割合</th><th></th></tr></thead><tbody>';
+    [[1,'#639922'],[2,'#378ADD'],[3,'#EF9F27'],[4,'#E24B4A']].forEach(([s,col]) => {
+      const n = c[s]||0, pct = total ? Math.round(n/total*100) : 0;
+      h += `<tr><td><span class="badge b${s}">${STATUS_LABEL[s]}</span></td><td>${n}</td><td>${pct}%</td>
+        <td><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div></td></tr>`;
+    });
+    h += '</tbody></table></div>';
+  }
+
+  // 結果集計
+  const sorted = Object.entries(rc).sort((a,b) => b[1]-a[1]);
+  if (sorted.length > 0) {
+    const mx = sorted[0][1];
+    h += '<div class="at-card"><p class="at-card-title">結果集計</p><table class="at"><thead><tr><th>項目</th><th>件数</th><th></th></tr></thead><tbody>';
+    sorted.forEach(([k,v]) => {
+      const pct = mx ? Math.round(v/mx*100) : 0;
+      const filtered = list.filter(e => e.results && e.results.includes(k));
+      const fJson = JSON.stringify(filtered).replace(/"/g,'&quot;');
+      h += `<tr style="cursor:pointer" onclick="showDetailModal('result_${k}',${fJson})">
+        <td style="color:var(--accent);text-decoration:underline">${k}</td>
+        <td>${v}</td>
+        <td><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:#1558A8"></div></div></td>
+      </tr>`;
+    });
+    h += '</tbody></table></div>';
+  }
+
+  document.getElementById('detail-title').innerHTML = name + ' の集計 <button class="close-btn" onclick="closeDetailModal()">×</button>';
+  document.getElementById('detail-content').innerHTML = h;
+  document.getElementById('detail-modal-bg').classList.add('open');
+}
+
 // ── セレクトの選択状態スタイル更新 ──
 function updateSelectStyle(el) {
   el.classList.toggle('selected', el.value !== '');
@@ -1166,7 +1221,7 @@ function showDetailModal(statusFilter, list) {
   h += '<thead><tr><th class="th-left">担当者</th><th>日付</th><th>エリア</th><th>区分</th><th>番号</th><th>結果</th><th>備考</th></tr></thead><tbody>';
   list.sort((a,b) => (a.date||'') < (b.date||'') ? -1 : 1).forEach(e => {
     const results = (e.results||[]).join('・');
-    const kubunShort = (e.kubun||'').replace('アップセル','UP').replace('(アポ有)','有').replace('(アポ無・直訪)','無');
+    const kubunShort = (e.kubun||'').replace('アップセル','UP').replace('(アポ有)','ｱﾎﾟ有').replace('(アポ無・直訪)','ｱﾎﾟ無').replace('レスポンス','レス');
     h += `<tr>
       <td class="td-left">${e.staff||''}</td>
       <td>${e.date||''}</td>
