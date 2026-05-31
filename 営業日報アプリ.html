@@ -285,6 +285,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
         <select id="revisit-staff-filter" onchange="renderRevisitList()" style="font-size:13px;padding:7px 9px;border:0.5px solid var(--border-md);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);">
           <option value="">全スタッフ</option>
         </select>
+        <button class="btn" onclick="downloadRevisitExcel()" style="font-size:12px;padding:6px 12px;background:#1D6F42;color:#fff;border-color:#1D6F42;margin-left:auto;">&#8681; Excel出力</button>
       </div>
       <div id="revisit-content"></div>
     </div>
@@ -1238,6 +1239,60 @@ function renderRevisitList() {
   h += '</tbody></table></div>';
   h += `<p style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px">計 ${list.length} 件</p>`;
   target.innerHTML = h;
+}
+
+// ── 再訪予定 Excel出力 ──
+function downloadRevisitExcel() {
+  const today = todayStr();
+  const staffFilter = document.getElementById('revisit-staff-filter').value;
+
+  let list = Object.values(entries).filter(e =>
+    e && !e.deleted && (parseInt(e.status) === 2 || parseInt(e.status) === 3)
+  );
+  if (staffFilter) list = list.filter(e => e.staff === staffFilter);
+
+  const filterLabel = {
+    all: '全て', today: '本日', week: '今週', overdue: '期限超過'
+  }[revisitFilter] || '全て';
+
+  const now = new Date(today);
+  const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 6);
+  if (revisitFilter === 'today') list = list.filter(e => e.revisit === today);
+  else if (revisitFilter === 'week') list = list.filter(e => e.revisit && e.revisit >= today && e.revisit <= fmtD(weekEnd));
+  else if (revisitFilter === 'overdue') list = list.filter(e => e.revisit && e.revisit < today);
+
+  list.sort((a,b) => {
+    if (!a.revisit && !b.revisit) return 0;
+    if (!a.revisit) return 1;
+    if (!b.revisit) return -1;
+    return a.revisit < b.revisit ? -1 : 1;
+  });
+
+  if (!list.length) { toast('出力するデータがありません'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const rows = [['再訪予定日','担当者','番号','エリア','区分','ステータス','結果','備考']];
+  list.forEach(e => {
+    const statusLabel = (STATUS_LABEL[parseInt(e.status)]||'').replace('【再訪予定】','');
+    rows.push([
+      e.revisit || '未設定',
+      e.staff || '',
+      e.num || '',
+      e.area || '',
+      e.kubun || '',
+      statusLabel,
+      (e.results||[]).map(r => r === 'その他(備考に記入)' ? 'その他' : r).join('・'),
+      e.memo || ''
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [12,10,12,14,16,12,20,20].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, '再訪予定');
+
+  const filename = `再訪予定リスト_${today}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  toast(`${filename} をダウンロードしました`);
 }
 
 // ── 再訪ステータス更新 ──
