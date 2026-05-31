@@ -81,6 +81,8 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
 #tabs { display: flex; gap: 0; }
 .tab { flex: 1; padding: 8px 4px; font-size: 13px; text-align: center; border: none; background: none; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; font-family: inherit; }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.asa-cmt { width:100%; box-sizing:border-box; font-family:inherit; font-size:12px; line-height:1.4; padding:5px 7px; border:0.5px solid var(--border-md); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); resize:vertical; min-height:40px; }
+.asa-cmt:focus { outline:none; border-color:var(--accent); }
 
 #content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px; padding-bottom: calc(12px + var(--safe-b)); }
 .page { display: none; }
@@ -234,6 +236,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
       <button class="tab" onclick="showPage('weekly',this)">週次</button>
       <button class="tab" onclick="showPage('monthly',this)">月次</button>
       <button class="tab" onclick="showPage('revisit',this)">再訪予定</button>
+      <button class="tab" onclick="showPage('asacho',this)">朝礼用</button>
     </div>
   </div>
 
@@ -271,6 +274,13 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
           <tbody id="tl-body"></tbody>
         </table>
       </div>
+      <div class="at-card" style="margin-top:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px">本日の振り返り（朝礼で共有されます）</div>
+        <label style="font-size:11px;font-weight:600;color:var(--muted)">よかった点</label>
+        <textarea id="daily-review-good" class="asa-cmt" rows="2" placeholder="うまくいった行動・工夫・好反応など" onblur="saveDailyReview()" style="margin:2px 0 8px"></textarea>
+        <label style="font-size:11px;font-weight:600;color:var(--muted)">改善すべき点</label>
+        <textarea id="daily-review-improve" class="asa-cmt" rows="2" placeholder="課題・反省点・次に改善することなど" onblur="saveDailyReview()" style="margin:2px 0 0"></textarea>
+      </div>
     </div>
 
     <!-- ── 再訪リスト ── -->
@@ -288,6 +298,21 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
         <button class="btn" onclick="downloadRevisitExcel()" style="font-size:12px;padding:6px 12px;background:#1D6F42;color:#fff;border-color:#1D6F42;margin-left:auto;">&#8681; Excel出力</button>
       </div>
       <div id="revisit-content"></div>
+    </div>
+
+    <!-- ── 朝礼用 ── -->
+    <div class="page" id="page-asacho">
+      <div class="toolbar" style="flex-wrap:wrap;gap:6px">
+        <div class="wnav">
+          <button class="btn" onclick="changeAsa(-1)">‹</button>
+          <span class="wnav-lbl" id="asa-lbl">―</span>
+          <button class="btn" onclick="changeAsa(1)">›</button>
+        </div>
+        <button class="btn" onclick="asaToLatest()" style="font-size:12px;padding:6px 12px">前稼働日へ</button>
+        <button class="btn" onclick="downloadAsaExcel()" style="font-size:12px;padding:6px 12px;background:#1D6F42;color:#fff;border-color:#1D6F42;margin-left:auto;">&#8681; Excel出力</button>
+      </div>
+      <p id="asa-sub" style="font-size:12px;color:var(--muted);margin:2px 2px 10px;line-height:1.5"></p>
+      <div id="asa-content"></div>
     </div>
 
     <!-- ── 前日集計 ── -->
@@ -383,7 +408,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
     </div>
     <div class="fr">
       <label>区分 <span style="color:var(--text);font-size:11px;">※入力必須</span></label>
-      <select id="f-kubun">
+      <select id="f-kubun" onchange="onKubunChange()">
         <option value="">選択してください</option>
         <option>アップセル(アポ有)</option>
         <option>アップセル(アポ無・直訪)</option>
@@ -394,8 +419,13 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
       </select>
     </div>
     <div class="fr">
-      <label>案件番号 / 顧客番号 <span style="color:var(--muted);font-size:11px;">※アルファベット(I-)は入力無しでOK<br>番号が無い場合(新規等)は備考欄にお客様名を記入してください</span></label>
-      <input type="number" id="f-num" placeholder="例:123456" inputmode="numeric" pattern="[0-9]*" min="0" step="1" oninput="this.value=this.value.replace(/[^0-9]/g,'')" >
+      <label>案件番号 / 顧客番号
+        <span style="color:var(--muted);font-size:11px;display:block;line-height:1.5;margin-top:2px">
+          顧客番号：頭の「0」入力なし（9桁） / 案件番号：アルファベット「I」入力なし（7桁）<br>
+          番号が無い場合（新規等）は備考欄にお客様名を記入してください
+        </span>
+      </label>
+      <input type="number" id="f-num" placeholder="例:123456" inputmode="numeric" pattern="[0-9]*" min="0" step="1" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,9)" >
     </div>
     <div class="fr">
       <label>ステータス <span style="color:var(--text);font-size:11px;">※入力必須</span></label>
@@ -406,6 +436,9 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
         <option value="3">今回成約なし【再訪予定】</option>
         <option value="4">成約なし【NG】</option>
       </select>
+      <div id="fr-kaiaku-warn" style="display:none;margin-top:6px;font-size:11px;color:#9A3412;background:#FCE9E7;border:0.5px solid #F2B8B2;border-radius:6px;padding:6px 9px;line-height:1.5">
+        ※アップセル獲得無い場合は[成約なし]or[今回成約なし]<br>（解約フォロー完了＝[成約]ではない）
+      </div>
     </div>
     <div class="fr" id="fr-revisit" style="display:none;">
       <label>再訪予定日</label>
@@ -555,6 +588,9 @@ let editKey = null;
 let wkOff = 0, moOff = 0, pdOff = -1;
 let wkMode = 'all', moMode = 'all', pdMode = 'all';
 let saveTimer = null;
+let asaDate = null;          // 朝礼用：表示中の参照日（null=前稼働日を自動算出）
+let reviews = {};            // 朝礼用：振り返りコメント { "YYYY-MM-DD__担当者": "コメント" }
+let reviewTimer = null;
 
 // ── Firebase 初期化 ──
 function initFirebase() {
@@ -575,6 +611,12 @@ function initFirebase() {
       refreshActiveAggr();
     }, err => {
       setSyncState('err', '接続エラー');
+    });
+    // 朝礼用：振り返りコメントの同期
+    db.ref('reviews').on('value', snap => {
+      reviews = snap.val() || {};
+      if (document.getElementById('page-asacho').classList.contains('active')) renderAsacho();
+      if (document.getElementById('page-daily').classList.contains('active')) loadDailyReview();
     });
   } catch(e) {
     setSyncState('err', 'Firebase設定エラー');
@@ -609,7 +651,55 @@ function saveLocal() {
 }
 function loadLocal() {
   try { const d = localStorage.getItem('nippo'); if(d) entries = JSON.parse(d); } catch(e) {}
+  try { const r = localStorage.getItem('nippo_reviews'); if(r) reviews = JSON.parse(r); } catch(e) {}
   renderTimeline();
+}
+// 朝礼用：振り返りコメントの保存（Firebase / ローカル両対応）
+// 振り返りコメントは { g:よかった点, i:改善すべき点 } で保持（旧形式の文字列も読めるよう正規化）
+function getReview(date, staff) {
+  const v = reviews[encodeKey(date + '__' + staff)];
+  if (!v) return { g:'', i:'' };
+  if (typeof v === 'string') return { g:v, i:'' };
+  return { g: v.g || '', i: v.i || '' };
+}
+function saveReview(date, staff, obj) {
+  const key = encodeKey(date + '__' + staff);
+  const g = (obj.g || '').trim(), i = (obj.i || '').trim();
+  if (g || i) reviews[key] = { g, i }; else delete reviews[key];
+  if (!db) {
+    try { localStorage.setItem('nippo_reviews', JSON.stringify(reviews)); } catch(e) {}
+    toast('コメントを保存しました');
+    return;
+  }
+  clearTimeout(reviewTimer);
+  reviewTimer = setTimeout(async () => {
+    setSyncState('ing', '保存中...');
+    try {
+      if (g || i) await db.ref('reviews/' + key).set({ g, i });
+      else await db.ref('reviews/' + key).remove();
+      toast('コメントを保存しました');
+    } catch(e) { setSyncState('err', '保存失敗'); }
+  }, 400);
+}
+// 日報入力画面：振り返りコメントの読込・保存
+function loadDailyReview() {
+  const g = document.getElementById('daily-review-good');
+  const i = document.getElementById('daily-review-improve');
+  if (!g || !i) return;
+  if (document.activeElement === g || document.activeElement === i) return;
+  const staff = document.getElementById('sel-staff').value;
+  const date = document.getElementById('sel-date').value;
+  const r = (staff && date) ? getReview(date, staff) : { g:'', i:'' };
+  g.value = r.g; i.value = r.i;
+}
+function saveDailyReview() {
+  const staff = document.getElementById('sel-staff').value;
+  const date = document.getElementById('sel-date').value;
+  if (!staff || !date) return;
+  saveReview(date, staff, {
+    g: document.getElementById('daily-review-good').value,
+    i: document.getElementById('daily-review-improve').value
+  });
 }
 
 // ── UI ユーティリティ ──
@@ -715,6 +805,7 @@ function renderTimeline() {
   const staff = document.getElementById('sel-staff').value;
   const date = document.getElementById('sel-date').value;
   if (!staff || !date) return;
+  loadDailyReview();
 
   // この日のスタッフの全エントリを収集
   const dayEntries = [];
@@ -788,6 +879,7 @@ function openModal(rawKey) {
   document.getElementById('time-err').style.display = 'none';
   document.getElementById('f-area').value = e.area || '';
   document.getElementById('f-kubun').value = e.kubun || '';
+  onKubunChange();
   document.getElementById('f-num').value = e.num || '';
   document.getElementById('f-status').value = e.status || '';
   onStatusChange();
@@ -888,12 +980,14 @@ function showPage(id, btn) {
   document.getElementById('page-' + id).classList.add('active');
   btn.classList.add('active');
   if (id === 'revisit') renderRevisitList();
+  if (id === 'asacho') renderAsacho();
   if (id === 'prevday') renderAggr('prevday');
   if (id === 'weekly')  renderAggr('weekly');
   if (id === 'monthly') renderAggr('monthly');
 }
 function refreshActiveAggr() {
   if (document.getElementById('page-revisit').classList.contains('active')) renderRevisitList();
+  if (document.getElementById('page-asacho').classList.contains('active')) renderAsacho();
   if (document.getElementById('page-prevday').classList.contains('active')) renderAggr('prevday');
   if (document.getElementById('page-weekly').classList.contains('active'))  renderAggr('weekly');
   if (document.getElementById('page-monthly').classList.contains('active')) renderAggr('monthly');
@@ -907,6 +1001,135 @@ function setMode(type, mode, btn) {
   renderAggr(type);
 }
 function changePrevDay(d) { pdOff += d; renderAggr('prevday'); }
+
+// ===== 朝礼用 =====
+function asaEsc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// 稼働日（status>0 のエントリがある日）一覧を昇順で返す
+function asaWorkingDays() {
+  const set = new Set();
+  Object.values(entries).forEach(e => { if (e && e.date && !e.deleted) set.add(e.date); });
+  return [...set].sort();
+}
+// 前稼働日＝今日より前で直近の稼働日（なければ最新の稼働日）
+function asaPrevWorkingDay() {
+  const days = asaWorkingDays();
+  if (!days.length) return null;
+  const today = todayStr();
+  const prior = days.filter(d => d < today);
+  return prior.length ? prior[prior.length - 1] : days[days.length - 1];
+}
+function asaRefDate() { return asaDate || asaPrevWorkingDay(); }
+function changeAsa(dir) {
+  const days = asaWorkingDays();
+  if (!days.length) return;
+  let idx = days.indexOf(asaRefDate());
+  if (idx === -1) idx = days.length - 1;
+  idx = Math.min(days.length - 1, Math.max(0, idx + dir));
+  asaDate = days[idx];
+  renderAsacho();
+}
+function asaToLatest() { asaDate = null; renderAsacho(); }
+function asaDayLabel(ds) {
+  if (!ds) return '―';
+  const d = new Date(ds + 'T00:00:00');
+  return `${d.getMonth()+1}/${d.getDate()}（${['日','月','火','水','木','金','土'][d.getDay()]}）`;
+}
+// 指定スタッフ・指定日の実績（訪問件数＝status>0の件数、獲得＝サービス別件数）
+function asaStaffStats(staff, date) {
+  const list = Object.values(entries).filter(e => e && e.staff === staff && e.date === date && e.status > 0 && !isKaiden(e));
+  const visits = list.length;
+  const svc = ALL_SERVICES.map(r => list.filter(e => e.results && e.results.includes(r)).length);
+  return { visits, svc };
+}
+function renderAsacho() {
+  const target = document.getElementById('asa-content');
+  const date = asaRefDate();
+  document.getElementById('asa-lbl').textContent = asaDayLabel(date);
+  const subEl = document.getElementById('asa-sub');
+  if (!date) {
+    subEl.textContent = '';
+    target.innerHTML = '<p class="empty-msg">表示できる稼働日のデータがありません。</p>';
+    return;
+  }
+  const isPrev = (asaDate === null);
+  const d = new Date(date + 'T00:00:00');
+  const dateFullLabel = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}（${['日','月','火','水','木','金','土'][d.getDay()]}）`;
+  subEl.innerHTML = `${isPrev ? '<b>前稼働日</b>（直近の稼働日）' : '選択日'}の実績：<b>${dateFullLabel}</b> 「‹ ›」で稼働日を移動。<br>` +
+    `<span style="color:var(--muted)">獲得はサービス別の件数（表は横スクロール）。行をタップすると日報入力に移動できます。振り返りコメントは日報入力画面で記入した内容を表示します。</span>`;
+
+  let html = '';
+  TEAMS.forEach(team => {
+    let tv = 0;
+    const tSvc = ALL_SERVICES.map(() => 0);
+    let rowsHtml = '', cmtHtml = '';
+    team.members.forEach(name => {
+      const { visits, svc } = asaStaffStats(name, date);
+      tv += visits;
+      svc.forEach((v, i) => tSvc[i] += v);
+      rowsHtml += `<tr onclick="goToDailyInput('${name}','${date}')" style="cursor:pointer">
+        <td class="td-left" style="white-space:nowrap;font-weight:600;color:var(--accent);text-decoration:underline">${name}</td>
+        <td style="text-align:center">${visits}</td>
+        ${svc.map(v => `<td style="text-align:center">${v}</td>`).join('')}
+      </tr>`;
+      const r = getReview(date, name);
+      if (r.g || r.i) {
+        cmtHtml += `<div style="margin:5px 0;font-size:12px;line-height:1.55">
+          <span style="font-weight:600;color:var(--accent)">${name}</span>` +
+          (r.g ? `<div style="margin-left:10px"><span style="color:#27500A;font-weight:600">よかった点：</span><span style="white-space:pre-wrap">${asaEsc(r.g)}</span></div>` : '') +
+          (r.i ? `<div style="margin-left:10px"><span style="color:#9A3412;font-weight:600">改善すべき点：</span><span style="white-space:pre-wrap">${asaEsc(r.i)}</span></div>` : '') +
+        `</div>`;
+      }
+    });
+    const dateSubHead = `<br><span style="font-weight:400;font-size:9px;color:var(--muted)">${date}</span>`;
+    const svcHead = ALL_SERVICES.map(r => `<th style="min-width:46px;font-size:10px;white-space:nowrap">${r}</th>`).join('');
+    const totalCells = tSvc.map(v => `<td style="text-align:center">${v}</td>`).join('');
+    html += `<div class="at-card" style="margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600;padding:10px 12px 4px;color:var(--accent)">${team.name}</div>
+      <div style="overflow-x:auto">
+        <table class="at" style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th class="th-left" style="white-space:nowrap;min-width:58px">担当${dateSubHead}</th>
+            <th style="min-width:48px">訪問<br>件数</th>
+            ${svcHead}
+          </tr></thead>
+          <tbody>
+            ${rowsHtml}
+            <tr style="background:var(--bg);font-weight:600">
+              <td class="td-left">チーム計</td>
+              <td style="text-align:center">${tv}</td>
+              ${totalCells}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:8px 12px 10px">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:2px">振り返りコメント</div>
+        ${cmtHtml || '<div style="font-size:12px;color:var(--muted)">（この日の記入はまだありません）</div>'}
+      </div>
+    </div>`;
+  });
+  target.innerHTML = html;
+}
+function downloadAsaExcel() {
+  const date = asaRefDate();
+  if (!date) { toast('出力できるデータがありません'); return; }
+  const rows = [['日付','チーム','担当','訪問件数', ...ALL_SERVICES, 'よかった点','改善すべき点']];
+  TEAMS.forEach(team => {
+    let tv = 0; const tSvc = ALL_SERVICES.map(() => 0);
+    team.members.forEach(name => {
+      const { visits, svc } = asaStaffStats(name, date);
+      tv += visits; svc.forEach((v, i) => tSvc[i] += v);
+      const r = getReview(date, name);
+      rows.push([date, team.name, name, visits, ...svc, r.g, r.i]);
+    });
+    rows.push([date, team.name, 'チーム計', tv, ...tSvc, '', '']);
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:16},{wch:10},{wch:10}, ...ALL_SERVICES.map(()=>({wch:10})), {wch:34},{wch:34}];
+  XLSX.utils.book_append_sheet(wb, ws, '朝礼用');
+  XLSX.writeFile(wb, `朝礼用_${date}.xlsx`);
+}
 
 // ── 集計 ──
 function getWeekRange(off) {
@@ -934,12 +1157,15 @@ function getEntriesInRange(s, e) {
   });
 }
 
+// 架電業務は訪問件数にカウントしない
+const isKaiden = e => e && e.kubun === '架電業務';
+
 function calcStats(list) {
   const c = { 1:0, 2:0, 3:0, 4:0 };
   let total = 0;
   const rc = {};
   list.forEach(e => {
-    if (e.status > 0) { c[e.status] = (c[e.status] || 0) + 1; total++; }
+    if (e.status > 0 && !isKaiden(e)) { c[e.status] = (c[e.status] || 0) + 1; total++; }
     (e.results || []).forEach(r => { rc[r] = (rc[r] || 0) + 1; });
   });
   return { c, total, rc };
@@ -973,10 +1199,63 @@ function renderAggr(type) {
     // チーム別サマリー
     allHtml += '<div style="font-size:13px;font-weight:600;margin:12px 0 6px">チーム別</div>';
     allHtml += renderStaffTable(list);
+    if (type === 'monthly') allHtml += renderMonthlyRates(list);
     target.innerHTML = allHtml;
   } else {
-    target.innerHTML = renderStaffTable(list);
+    let h = renderStaffTable(list);
+    if (type === 'monthly') h += renderMonthlyRates(list);
+    target.innerHTML = h;
   }
+}
+
+// 月次：担当別の獲得率・特定獲得件数
+function renderMonthlyRates(list) {
+  const G1 = ['でんき'];
+  const G2 = ['でんき','スマホ','IPスティック','カメラ','NHK','あんしん'];
+  const G4 = ['スマホ'];
+  const G5 = ['IPスティック','カメラ','NHK','あんしん'];
+  const G3 = ['TV(独力)','NET(独力)'];
+  const byStaff = {}; STAFF.forEach(s => byStaff[s] = []);
+  list.forEach(e => { if (e.status > 0 && !isKaiden(e) && e.staff && byStaff[e.staff]) byStaff[e.staff].push(e); });
+  const cnt = (arr, grp) => arr.reduce((sum, e) => sum + (e.results ? e.results.filter(r => grp.includes(r)).length : 0), 0);
+  const pct = (n, v) => v ? (Math.round(n / v * 1000) / 10).toFixed(1) + '%' : '–';
+  const cw = 'min-width:66px;white-space:normal;font-size:10px';
+  const make = (arr) => ({ v: arr.length, r1: cnt(arr,G1), r2: cnt(arr,G2), c3: cnt(arr,G3), r4: cnt(arr,G4), r5: cnt(arr,G5) });
+
+  let html = '<div style="font-size:13px;font-weight:600;margin:14px 0 6px">獲得率・特定獲得（担当別）</div>';
+  TEAMS.forEach(team => {
+    const memberRows = team.members.map(n => ({ name: n, ...make(byStaff[n] || []) }));
+    const teamAll = team.members.flatMap(n => byStaff[n] || []);
+    const rows = [...memberRows, { name: 'チーム計', ...make(teamAll), isTotal: true }];
+    let h = `<div class="at-card" style="margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600;padding:10px 12px 4px;color:var(--accent)">${team.name}</div>
+      <div style="overflow-x:auto"><table class="at" style="width:100%;border-collapse:collapse"><thead><tr>
+        <th class="th-left" style="white-space:nowrap;min-width:58px">担当</th>
+        <th style="min-width:46px">訪問<br>件数</th>
+        <th style="${cw}">①電気<br>獲得率</th>
+        <th style="${cw}">②電気+スマホ+IP+カメラ+NHK+あんしん<br>獲得率</th>
+        <th style="${cw}">③TV(独力)+NET(独力)<br>件数</th>
+        <th style="${cw}">④スマホ<br>獲得率</th>
+        <th style="${cw}">⑤IP+カメラ+NHK+あんしん<br>獲得率</th>
+      </tr></thead><tbody>`;
+    rows.forEach(row => {
+      const bg = row.isTotal ? 'background:var(--bg);font-weight:600' : '';
+      h += `<tr style="${bg}">
+        <td class="td-left" style="white-space:nowrap;${row.isTotal ? '' : 'font-weight:600'}">${row.name}</td>
+        <td style="text-align:center">${row.v}</td>
+        <td style="text-align:center">${pct(row.r1, row.v)}</td>
+        <td style="text-align:center">${pct(row.r2, row.v)}</td>
+        <td style="text-align:center">${row.c3}</td>
+        <td style="text-align:center">${pct(row.r4, row.v)}</td>
+        <td style="text-align:center">${pct(row.r5, row.v)}</td>
+      </tr>`;
+    });
+    h += `</tbody></table></div>
+      <div style="padding:6px 12px 10px;font-size:10.5px;color:var(--muted);line-height:1.5">獲得率＝該当サービスの獲得件数 ÷ 訪問件数。②＝①＋④＋⑤（電気・スマホ・IPスティック・カメラ・NHK・あんしんの合計）。③は件数。</div>
+    </div>`;
+    html += h;
+  });
+  return html;
 }
 
 // ステータス名を2行に分割（【】で改行）
@@ -1213,14 +1492,15 @@ function renderRevisitList() {
   }
 
   let h = '<div class="at-card"><table class="at" style="width:100%"><thead><tr>';
-  h += '<th class="th-left">再訪予定日</th><th>担当者</th><th>番号</th><th>エリア</th><th>ステータス</th><th>備考</th><th>更新</th>';
+  h += '<th class="th-left">訪問日</th><th class="th-left">再訪予定日</th><th>担当者</th><th>番号</th><th>エリア</th><th>ステータス</th><th>備考</th><th>更新</th>';
   h += '</tr></thead><tbody>';
 
   list.forEach(e => {
     const isToday = e.revisit === today;
     const isOverdue = e.revisit && e.revisit < today;
     const rowStyle = isOverdue ? 'background:#FDE0DF' : isToday ? 'background:#EAF3DE' : '';
-    h += `<tr style="${rowStyle}">
+    h += `<tr style="${rowStyle};cursor:pointer" onclick="goToDailyInput('${e.staff||''}','${e.date||''}')">
+      <td style="white-space:nowrap;font-size:11px">${e.date||''}</td>
       <td style="white-space:nowrap;font-weight:${isToday||isOverdue?'600':'400'};color:${isOverdue?'#791F1F':isToday?'#27500A':''}">
         ${e.revisit||'未設定'}${isToday?' 🔔':''}${isOverdue?' ⚠️':''}
       </td>
@@ -1376,6 +1656,11 @@ function onStatusChange() {
   document.getElementById('fr-revisit').style.display = show ? 'block' : 'none';
   if (!show) document.getElementById('f-revisit').value = '';
 }
+function onKubunChange() {
+  const k = document.getElementById('f-kubun').value;
+  const warn = document.getElementById('fr-kaiaku-warn');
+  if (warn) warn.style.display = k === '解約フォローアップセル' ? 'block' : 'none';
+}
 
 // ── 詳細モーダル ──
 function showDetailModal(statusFilter, list) {
@@ -1403,10 +1688,6 @@ function showDetailModal(statusFilter, list) {
       <td>${e.num||''}</td>
       <td style="font-size:11px">${results}</td>
       <td style="font-size:11px">${e.memo||''}</td>
-      <td style="white-space:nowrap">
-        <button onclick="updateRevisitStatus(event,'${encodeKey(Object.keys(entries).find(k=>entries[k]===e)||'')}',1)" style="font-size:11px;padding:4px 8px;background:#dcf0c8;border:0.5px solid #639922;border-radius:4px;cursor:pointer;margin-right:3px;color:#27500A">成約【対応完了】</button>
-        <button onclick="updateRevisitStatus(event,'${encodeKey(Object.keys(entries).find(k=>entries[k]===e)||'')}',4)" style="font-size:11px;padding:4px 8px;background:#fde0df;border:0.5px solid #E24B4A;border-radius:4px;cursor:pointer;color:#791F1F">成約なし【NG】</button>
-      </td>
     </tr>`;
   });
   h += '</tbody></table></div>';
@@ -1415,6 +1696,13 @@ function showDetailModal(statusFilter, list) {
 }
 function closeDetailModal() {
   document.getElementById('detail-modal-bg').classList.remove('open');
+}
+// 日報入力タブへの遷移（朝礼・再訪予定の行選択から）
+function goToDailyInput(staff, date) {
+  document.getElementById('sel-staff').value = staff;
+  document.getElementById('sel-date').value = date;
+  const btn = [...document.querySelectorAll('.tab')].find(b => (b.getAttribute('onclick')||'').includes("'daily'"));
+  showPage('daily', btn || null);
 }
 
 // ── モーダル外タップで閉じる ──
