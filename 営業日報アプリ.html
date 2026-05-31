@@ -1212,7 +1212,7 @@ function renderRevisitList() {
   }
 
   let h = '<div class="at-card"><table class="at" style="width:100%"><thead><tr>';
-  h += '<th class="th-left">再訪予定日</th><th>担当者</th><th>番号</th><th>エリア</th><th>ステータス</th><th>備考</th>';
+  h += '<th class="th-left">再訪予定日</th><th>担当者</th><th>番号</th><th>エリア</th><th>ステータス</th><th>備考</th><th>更新</th>';
   h += '</tr></thead><tbody>';
 
   list.forEach(e => {
@@ -1228,12 +1228,30 @@ function renderRevisitList() {
       <td style="font-size:11px">${e.area||''}</td>
       <td style="font-size:11px"><span class="badge b${parseInt(e.status)}">${(STATUS_LABEL[parseInt(e.status)]||'').replace('【再訪予定】','')}</span></td>
       <td style="font-size:11px">${e.memo||''}</td>
+      <td style="white-space:nowrap">
+        <button onclick="updateRevisitStatus(event,'${encodeKey(Object.keys(entries).find(k=>entries[k]===e)||'')}',1)" style="font-size:11px;padding:4px 8px;background:#dcf0c8;border:0.5px solid #639922;border-radius:4px;cursor:pointer;margin-right:3px;color:#27500A">成約【対応完了】</button>
+        <button onclick="updateRevisitStatus(event,'${encodeKey(Object.keys(entries).find(k=>entries[k]===e)||'')}',4)" style="font-size:11px;padding:4px 8px;background:#fde0df;border:0.5px solid #E24B4A;border-radius:4px;cursor:pointer;color:#791F1F">成約なし【NG】</button>
+      </td>
     </tr>`;
   });
 
   h += '</tbody></table></div>';
   h += `<p style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px">計 ${list.length} 件</p>`;
   target.innerHTML = h;
+}
+
+// ── 再訪ステータス更新 ──
+function updateRevisitStatus(event, eKey, newStatus) {
+  event.stopPropagation();
+  const statusLabel = newStatus === 1 ? '成約【対応完了】' : '成約なし【NG】';
+  if (!confirm(`ステータスを「${statusLabel}」に更新しますか？`)) return;
+  if (!eKey || !entries[eKey]) { toast('データが見つかりません'); return; }
+  entries[eKey].status = newStatus;
+  entries[eKey].ts = new Date().toISOString();
+  saveToFirebase(Object.keys(entries).find(k => encodeKey(k) === eKey) || eKey, entries[eKey]);
+  if (USE_LOCAL) saveLocal();
+  toast('ステータスを更新しました');
+  renderRevisitList();
 }
 
 // ── スタッフ詳細モーダル ──
@@ -1330,6 +1348,10 @@ function showDetailModal(statusFilter, list) {
       <td>${e.num||''}</td>
       <td style="font-size:11px">${results}</td>
       <td style="font-size:11px">${e.memo||''}</td>
+      <td style="white-space:nowrap">
+        <button onclick="updateRevisitStatus(event,'${encodeKey(Object.keys(entries).find(k=>entries[k]===e)||'')}',1)" style="font-size:11px;padding:4px 8px;background:#dcf0c8;border:0.5px solid #639922;border-radius:4px;cursor:pointer;margin-right:3px;color:#27500A">成約【対応完了】</button>
+        <button onclick="updateRevisitStatus(event,'${encodeKey(Object.keys(entries).find(k=>entries[k]===e)||'')}',4)" style="font-size:11px;padding:4px 8px;background:#fde0df;border:0.5px solid #E24B4A;border-radius:4px;cursor:pointer;color:#791F1F">成約なし【NG】</button>
+      </td>
     </tr>`;
   });
   h += '</tbody></table></div>';
