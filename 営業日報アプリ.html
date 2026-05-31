@@ -1073,8 +1073,8 @@ function renderAsacho() {
         .filter(e => e && e.staff === name && e.date && !e.deleted && e.status > 0 && !isKaiden(e))
         .map(e => e.date);
       const lastDay = staffDates.length ? [...new Set(staffDates)].sort().pop() : null;
-      // 数値はそのスタッフ自身の前稼働日のデータを使用
-      const staffDate = lastDay || date;
+      // 前稼働日自動モード → 各自の前稼働日データ / 日付選択モード → 選択された日のデータ
+      const staffDate = isPrev ? (lastDay || date) : date;
       const { visits, svc } = asaStaffStats(name, staffDate);
       tv += visits;
       svc.forEach((v, i) => tSvc[i] += v);
@@ -1084,7 +1084,7 @@ function renderAsacho() {
       })() : '―';
       const lastDayColor = lastDay === date ? '#27500A' : (lastDay && lastDay < date ? '#9A3412' : 'var(--muted)');
       rowsHtml += `<tr onclick="goToDailyInput('${name}','${staffDate}')" style="cursor:pointer">
-        <td class="td-left" style="white-space:nowrap">
+        <td class="td-left" style="white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1;box-shadow:2px 0 4px rgba(0,0,0,0.06)">
           <span style="font-weight:600;color:var(--accent);text-decoration:underline">${name}</span><br>
           <span style="font-size:9px;color:${lastDayColor};font-weight:400">前稼働: ${lastDayStr}</span>
         </td>
@@ -1107,14 +1107,14 @@ function renderAsacho() {
       <div style="overflow-x:auto">
         <table class="at" style="width:100%;border-collapse:collapse">
           <thead><tr>
-            <th class="th-left" style="white-space:nowrap;min-width:70px">担当<br><span style="font-weight:400;font-size:9px;color:var(--muted)">（前稼働日）</span></th>
+            <th class="th-left" style="white-space:nowrap;min-width:70px;position:sticky;left:0;background:var(--bg);z-index:2;box-shadow:2px 0 4px rgba(0,0,0,0.06)">担当<br><span style="font-weight:400;font-size:9px;color:var(--muted)">（前稼働日）</span></th>
             <th style="min-width:48px">訪問<br>件数</th>
             ${svcHead}
           </tr></thead>
           <tbody>
             ${rowsHtml}
             <tr style="background:var(--bg);font-weight:600">
-              <td class="td-left">チーム計</td>
+              <td class="td-left" style="position:sticky;left:0;background:var(--bg);z-index:1;box-shadow:2px 0 4px rgba(0,0,0,0.06)">チーム計</td>
               <td style="text-align:center">${tv}</td>
               ${totalCells}
             </tr>
