@@ -1068,20 +1068,22 @@ function renderAsacho() {
     const tSvc = ALL_SERVICES.map(() => 0);
     let rowsHtml = '', cmtHtml = '';
     team.members.forEach(name => {
-      const { visits, svc } = asaStaffStats(name, date);
-      tv += visits;
-      svc.forEach((v, i) => tSvc[i] += v);
       // このスタッフ自身の最終稼働日（前稼働日）
       const staffDates = Object.values(entries)
         .filter(e => e && e.staff === name && e.date && !e.deleted && e.status > 0 && !isKaiden(e))
         .map(e => e.date);
       const lastDay = staffDates.length ? [...new Set(staffDates)].sort().pop() : null;
+      // 数値はそのスタッフ自身の前稼働日のデータを使用
+      const staffDate = lastDay || date;
+      const { visits, svc } = asaStaffStats(name, staffDate);
+      tv += visits;
+      svc.forEach((v, i) => tSvc[i] += v);
       const lastDayStr = lastDay ? (() => {
         const d = new Date(lastDay + 'T00:00:00');
         return `${d.getMonth()+1}/${d.getDate()}(${['日','月','火','水','木','金','土'][d.getDay()]})`;
       })() : '―';
       const lastDayColor = lastDay === date ? '#27500A' : (lastDay && lastDay < date ? '#9A3412' : 'var(--muted)');
-      rowsHtml += `<tr onclick="goToDailyInput('${name}','${date}')" style="cursor:pointer">
+      rowsHtml += `<tr onclick="goToDailyInput('${name}','${staffDate}')" style="cursor:pointer">
         <td class="td-left" style="white-space:nowrap">
           <span style="font-weight:600;color:var(--accent);text-decoration:underline">${name}</span><br>
           <span style="font-size:9px;color:${lastDayColor};font-weight:400">前稼働: ${lastDayStr}</span>
