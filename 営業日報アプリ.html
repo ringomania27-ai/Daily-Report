@@ -302,16 +302,18 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
 
     <!-- ── 朝礼用 ── -->
     <div class="page" id="page-asacho">
-      <div class="toolbar" style="flex-wrap:wrap;gap:6px">
-        <div class="wnav">
-          <button class="btn" onclick="changeAsa(-1)">‹</button>
-          <span class="wnav-lbl" id="asa-lbl">―</span>
-          <button class="btn" onclick="changeAsa(1)">›</button>
+      <div style="position:sticky;top:-12px;z-index:10;background:var(--surface);margin:-12px -12px 10px;padding:10px 12px 8px;border-bottom:0.5px solid var(--border);">
+        <div class="toolbar" style="flex-wrap:wrap;gap:6px;margin-bottom:0">
+          <div class="wnav">
+            <button class="btn" onclick="changeAsa(-1)">‹</button>
+            <span class="wnav-lbl" id="asa-lbl">―</span>
+            <button class="btn" onclick="changeAsa(1)">›</button>
+          </div>
+          <button class="btn" onclick="asaToLatest()" style="font-size:12px;padding:6px 12px">前稼働日へ</button>
+          <button class="btn" onclick="downloadAsaExcel()" style="font-size:12px;padding:6px 12px;background:#1D6F42;color:#fff;border-color:#1D6F42;margin-left:auto;">&#8681; Excel出力</button>
         </div>
-        <button class="btn" onclick="asaToLatest()" style="font-size:12px;padding:6px 12px">前稼働日へ</button>
-        <button class="btn" onclick="downloadAsaExcel()" style="font-size:12px;padding:6px 12px;background:#1D6F42;color:#fff;border-color:#1D6F42;margin-left:auto;">&#8681; Excel出力</button>
+        <p id="asa-sub" style="font-size:12px;color:var(--muted);margin:4px 2px 0;line-height:1.5"></p>
       </div>
-      <p id="asa-sub" style="font-size:12px;color:var(--muted);margin:2px 2px 10px;line-height:1.5"></p>
       <div id="asa-content"></div>
     </div>
 
