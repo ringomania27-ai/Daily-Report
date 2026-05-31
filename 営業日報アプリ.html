@@ -1154,6 +1154,88 @@ function downloadExcel(type) {
   toast(`${filename} をダウンロードしました`);
 }
 
+// ── 再訪リスト ──
+let revisitFilter = 'all';
+
+function initRevisitStaffFilter() {
+  const sel = document.getElementById('revisit-staff-filter');
+  STAFF.forEach(n => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    sel.appendChild(o);
+  });
+}
+
+function setRevisitFilter(filter, btn) {
+  revisitFilter = filter;
+  btn.closest('#revisit-filter-seg').querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRevisitList();
+}
+
+function renderRevisitList() {
+  const today = todayStr();
+  const staffFilter = document.getElementById('revisit-staff-filter').value;
+
+  // ステータスが再訪予定のデータを抽出（再訪予定日なしもOK）
+  let list = Object.values(entries).filter(e =>
+    e && !e.deleted && (e.status === 2 || e.status === 3)
+  );
+
+  // スタッフフィルター
+  if (staffFilter) list = list.filter(e => e.staff === staffFilter);
+
+  // 期間フィルター
+  const now = new Date(today);
+  const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 6);
+
+  if (revisitFilter === 'today') {
+    list = list.filter(e => e.revisit === today);
+  } else if (revisitFilter === 'week') {
+    list = list.filter(e => e.revisit && e.revisit >= today && e.revisit <= fmtD(weekEnd));
+  } else if (revisitFilter === 'overdue') {
+    list = list.filter(e => e.revisit && e.revisit < today);
+  }
+
+  // 再訪予定日順に並び替え（未設定は末尾）
+  list.sort((a,b) => {
+    if (!a.revisit && !b.revisit) return 0;
+    if (!a.revisit) return 1;
+    if (!b.revisit) return -1;
+    return a.revisit < b.revisit ? -1 : 1;
+  });
+
+  const target = document.getElementById('revisit-content');
+  if (!list.length) {
+    target.innerHTML = '<p class="empty-msg">該当する再訪予定がありません</p>';
+    return;
+  }
+
+  let h = '<div class="at-card"><table class="at" style="width:100%"><thead><tr>';
+  h += '<th class="th-left">再訪予定日</th><th>担当者</th><th>番号</th><th>エリア</th><th>ステータス</th><th>備考</th>';
+  h += '</tr></thead><tbody>';
+
+  list.forEach(e => {
+    const isToday = e.revisit === today;
+    const isOverdue = e.revisit && e.revisit < today;
+    const rowStyle = isOverdue ? 'background:#FDE0DF' : isToday ? 'background:#EAF3DE' : '';
+    h += `<tr style="${rowStyle}">
+      <td style="white-space:nowrap;font-weight:${isToday||isOverdue?'600':'400'};color:${isOverdue?'#791F1F':isToday?'#27500A':''}">
+        ${e.revisit||'未設定'}${isToday?' 🔔':''}${isOverdue?' ⚠️':''}
+      </td>
+      <td style="white-space:nowrap">${e.staff||''}</td>
+      <td>${e.num||''}</td>
+      <td style="font-size:11px">${e.area||''}</td>
+      <td style="font-size:11px"><span class="badge b${e.status}">${STATUS_LABEL[e.status]||''}</span></td>
+      <td style="font-size:11px">${e.memo||''}</td>
+    </tr>`;
+  });
+
+  h += '</tbody></table></div>';
+  h += `<p style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px">計 ${list.length} 件</p>`;
+  target.innerHTML = h;
+}
+
 // ── スタッフ詳細モーダル ──
 function showStaffDetail(name, list) {
   const { c, total, rc } = calcStats(list);
@@ -1330,6 +1412,7 @@ function logout() {
 }
 
 initStaff();
+initRevisitStaffFilter();
 initTimeSelect();
 initResultGrid();
 document.getElementById('sel-date').value = todayStr();
