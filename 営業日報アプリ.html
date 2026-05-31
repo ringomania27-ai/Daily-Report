@@ -233,7 +233,7 @@ html, body { height: 100%; background: var(--bg); font-family: 'Hiragino Sans', 
       <button class="tab" onclick="showPage('prevday',this)">日次</button>
       <button class="tab" onclick="showPage('weekly',this)">週次</button>
       <button class="tab" onclick="showPage('monthly',this)">月次</button>
-      <button class="tab" onclick="showPage('revisit',this)">再訪</button>
+      <button class="tab" onclick="showPage('revisit',this)">再訪予定</button>
     </div>
   </div>
 
@@ -1226,7 +1226,7 @@ function renderRevisitList() {
       <td style="white-space:nowrap">${e.staff||''}</td>
       <td>${e.num||''}</td>
       <td style="font-size:11px">${e.area||''}</td>
-      <td style="font-size:11px"><span class="badge b${parseInt(e.status)}">${STATUS_LABEL[parseInt(e.status)]||''}</span></td>
+      <td style="font-size:11px"><span class="badge b${parseInt(e.status)}">${(STATUS_LABEL[parseInt(e.status)]||'').replace('【再訪予定】','')}</span></td>
       <td style="font-size:11px">${e.memo||''}</td>
     </tr>`;
   });
